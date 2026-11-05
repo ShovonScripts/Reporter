@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CaseFileTimeline extends Model
 {
+    protected $table = 'case_file_timeline';
+
     protected $fillable = [
         'case_file_id',
         'date',

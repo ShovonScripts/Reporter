@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';
 
@@ -28,11 +28,7 @@ export default function AdminMediaPage() {
   const [showUpload, setShowUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    loadMedia();
-  }, [filters]);
-
-  const loadMedia = async () => {
+  const loadMedia = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -52,7 +48,11 @@ export default function AdminMediaPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    loadMedia();
+  }, [loadMedia]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -66,12 +66,6 @@ export default function AdminMediaPage() {
     setUploading(true);
     try {
       for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('alt_text', '');
-        formData.append('credit', '');
-        formData.append('rights_confirmed', 'false');
-
         await api.adminUploadMedia(file);
       }
       loadMedia();
@@ -174,7 +168,7 @@ export default function AdminMediaPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-4">
               {media.length === 0 ? (
                 <div className="col-span-full text-center py-12 text-muted">
-                  No media files found. Click "Upload Files" to add some.
+                  No media files found. Click &ldquo;Upload Files&rdquo; to add some.
                 </div>
               ) : (
                 media.map((item) => (

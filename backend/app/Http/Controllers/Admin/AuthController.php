@@ -20,7 +20,7 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'password' => 'required|string',
-            'two_factor_code' => 'nullable|string|size:6',
+            'two_factor_code' => 'nullable|string|max:20',
             'remember' => 'nullable|boolean',
         ]);
 
@@ -68,7 +68,7 @@ class AuthController extends Controller
         }
 
         // Log in the user
-        Auth::login($user, $request->boolean('remember'));
+        Auth::guard('web')->login($user, $request->boolean('remember'));
 
         // Regenerate session
         $request->session()->regenerate();
@@ -88,7 +88,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
@@ -104,6 +104,46 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'two_factor_enabled' => $user->hasTwoFactorEnabled(),
+        ]);
+    }
+
+    public function generateTwoFactorSecret(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->hasTwoFactorEnabled()) {
+            return response()->json([
+                'message' => 'Two-factor authentication is already enabled.',
+            ], 400);
+        }
+
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        if (!Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => 'Invalid password.',
+            ]);
+        }
+
+        $google2fa = new Google2FA();
+        $secret = $google2fa->generateSecretKey();
+
+        // Store the pending secret (not confirmed until a valid code is verified).
+        $user->update([
+            'two_factor_secret' => $secret,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at' => null,
+        ]);
+
+        return response()->json([
+            'secret' => $secret,
+            'otpauth_url' => $google2fa->getQRCodeUrl(
+                config('app.name'),
+                $user->email,
+                $secret
+            ),
         ]);
     }
 
@@ -128,9 +168,14 @@ class AuthController extends Controller
             ]);
         }
 
-        // Generate secret if not exists
+        if (empty($user->two_factor_secret)) {
+            throw ValidationException::withMessages([
+                'code' => 'Request a two-factor secret before confirming setup.',
+            ]);
+        }
+
         $google2fa = new Google2FA();
-        $secret = $user->two_factor_secret ?? $google2fa->generateSecretKey();
+        $secret = $user->two_factor_secret;
 
         $valid = $google2fa->verifyKey($secret, $request->code);
 
@@ -212,7 +257,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'message' => 'Recovery code accepted. Two-factor authentication disabled.',
+            'message' => 'Recovery code accepted.',
         ]);
     }
 }

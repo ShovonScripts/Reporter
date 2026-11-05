@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\NewsletterIssue as NewsletterIssueMail;
 use App\Models\NewsletterIssue;
 use App\Models\Subscriber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Queue;
 use App\Jobs\SendNewsletterJob;
@@ -37,7 +39,6 @@ class NewsletterIssueController extends Controller
             'scheduled_for' => 'nullable|date|after:now',
         ]);
 
-        // Validate scheduled_for when status is scheduled
         if ($validated['status'] === 'scheduled' && empty($validated['scheduled_for'])) {
             return response()->json([
                 'message' => 'Scheduled issues require a scheduled_for date.',
@@ -67,14 +68,12 @@ class NewsletterIssueController extends Controller
             'scheduled_for' => 'nullable|date',
         ]);
 
-        // Prevent editing sent issues
         if ($issue->isSent()) {
             return response()->json([
                 'message' => 'Cannot edit a sent newsletter issue.',
             ], 422);
         }
 
-        // Validate scheduled_for when status is scheduled
         $status = $validated['status'] ?? $issue->status;
         if ($status === 'scheduled' && empty($validated['scheduled_for']) && !$issue->scheduled_for) {
             return response()->json([
@@ -91,7 +90,6 @@ class NewsletterIssueController extends Controller
     {
         $issue = NewsletterIssue::findOrFail($id);
 
-        // Prevent deleting sent issues
         if ($issue->isSent()) {
             return response()->json([
                 'message' => 'Cannot delete a sent newsletter issue.',
@@ -114,7 +112,6 @@ class NewsletterIssueController extends Controller
 
         $issue->update(['status' => 'sending']);
 
-        // Queue the sending job
         SendNewsletterJob::dispatch($issue->id);
 
         return response()->json(['message' => 'Newsletter queued for sending.']);
@@ -150,11 +147,23 @@ class NewsletterIssueController extends Controller
             'test_email' => 'required|email|max:255',
         ]);
 
-        // TODO: Send test email
-        \Log::info('Test newsletter send', [
-            'issue_id' => $issue->id,
-            'test_email' => $request->test_email,
-        ]);
+        $subscriber = Subscriber::where('email', $request->test_email)->first();
+
+        if (!$subscriber) {
+            $subscriber = new Subscriber([
+                'email' => $request->test_email,
+                'status' => 'confirmed',
+            ]);
+        }
+
+        $unsubscribeToken = Subscriber::generateToken();
+        $subscriber->setUnsubscribeToken($unsubscribeToken);
+        $subscriber->save();
+
+        $unsubscribeUrl = rtrim(config('app.frontend_url'), '/') . "/newsletter/unsubscribe/{$unsubscribeToken}";
+
+        Mail::to($request->test_email)
+            ->send(new NewsletterIssueMail($issue, $subscriber, $unsubscribeUrl));
 
         return response()->json(['message' => 'Test email sent.']);
     }

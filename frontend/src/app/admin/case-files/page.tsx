@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';
@@ -27,11 +27,7 @@ export default function AdminCaseFilesPage() {
     page: 1,
   });
 
-  useEffect(() => {
-    loadCaseFiles();
-  }, [filters]);
-
-  const loadCaseFiles = async () => {
+  const loadCaseFiles = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -52,7 +48,11 @@ export default function AdminCaseFilesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    loadCaseFiles();
+  }, [loadCaseFiles]);
 
   const statusColors: Record<string, string> = {
     published: 'bg-green-100 text-green-800',

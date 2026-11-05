@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 class ReferrersDaily extends Model
 {
+    protected $table = 'referrers_daily';
+
     protected $fillable = [
         'date',
         'source',
@@ -22,11 +24,11 @@ class ReferrersDaily extends Model
 
     public static function incrementViews(string $source): void
     {
-        $today = now()->toDateString();
+        $today = now()->startOfDay();
 
-        self::updateOrCreate(
+        self::firstOrCreate(
             ['date' => $today, 'source' => $source],
-            ['views' => DB::raw('views + 1')]
-        );
+            ['views' => 0]
+        )->increment('views');
     }
 }

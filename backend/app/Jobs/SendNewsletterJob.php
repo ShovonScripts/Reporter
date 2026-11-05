@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Mail\NewsletterIssue as NewsletterIssueMail;
 use App\Models\NewsletterIssue;
 use App\Models\Subscriber;
 use Illuminate\Bus\Queueable;
@@ -55,14 +56,18 @@ class SendNewsletterJob implements ShouldQueue
         foreach ($chunks as $chunk) {
             foreach ($chunk as $subscriber) {
                 try {
-                    // TODO: Actually send email via transactional email provider
-                    // Mail::to($subscriber->email)->send(new NewsletterMail($issue, $subscriber));
+                    if (!$subscriber->unsubscribe_token_hash) {
+                        $unsubscribeToken = Subscriber::generateToken();
+                        $subscriber->setUnsubscribeToken($unsubscribeToken);
+                        $subscriber->save();
+                    } else {
+                        $unsubscribeToken = $subscriber->getRawOriginal('unsubscribe_token_hash');
+                    }
 
-                    // For now, just log
-                    Log::info('Newsletter sent', [
-                        'issue_id' => $issue->id,
-                        'subscriber_email' => $subscriber->email,
-                    ]);
+                    $unsubscribeUrl = rtrim(config('app.frontend_url'), '/') . "/newsletter/unsubscribe/{$unsubscribeToken}";
+
+                    Mail::to($subscriber->email)
+                        ->queue(new NewsletterIssueMail($issue, $subscriber, $unsubscribeUrl));
 
                     $totalSent++;
                 } catch (\Throwable $e) {

@@ -39,7 +39,7 @@ export default function AdminDashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted mt-1">Overview of your site's content and performance.</p>
+          <p className="text-muted mt-1">Overview of your site&apos;s content and performance.</p>
         </div>
         <Link href="/admin/articles/new" className="btn btn-primary">
           + New Article

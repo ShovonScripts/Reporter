@@ -10,8 +10,9 @@ const settingsSchema = z.object({
   journalist_name: z.string().max(255).optional(),
   positioning_line: z.string().max(255).optional(),
   bio: z.string().optional(),
-  social_links: z.array(z.string().url()).optional().default([]),
-  contact_details: z.record(z.string(), z.string()).optional().default({}),
+  social_links: z.array(z.string().url().or(z.literal(''))).optional().default([]),
+  contact_details: z.string().optional(),
+  contact_notification_email: z.string().email().optional().or(z.literal('')),
   newsletter_copy: z.string().optional(),
   newsletter_consent_version: z.string().max(20).optional(),
 });
@@ -43,7 +44,8 @@ export default function AdminSettingsPage() {
       positioning_line: '',
       bio: '',
       social_links: defaultSocialLinks.map(l => l.url),
-      contact_details: {},
+      contact_details: '',
+      contact_notification_email: '',
       newsletter_copy: '',
       newsletter_consent_version: '1.0',
     },
@@ -62,11 +64,22 @@ export default function AdminSettingsPage() {
       if (settings.positioning_line) setValue('positioning_line', settings.positioning_line);
       if (settings.bio) setValue('bio', settings.bio);
       if (settings.social_links) {
-        const urls = settings.social_links.map((s: any) => s.url || '');
+        const urls = settings.social_links.map((s: unknown) =>
+          typeof s === 'string' ? s : (s as { url?: string }).url || ''
+        );
         setValue('social_links', urls);
+      }
+      if (settings.contact_details) {
+        setValue(
+          'contact_details',
+          typeof settings.contact_details === 'string'
+            ? settings.contact_details
+            : JSON.stringify(settings.contact_details, null, 2)
+        );
       }
       if (settings.newsletter_copy) setValue('newsletter_copy', settings.newsletter_copy);
       if (settings.newsletter_consent_version) setValue('newsletter_consent_version', settings.newsletter_consent_version);
+      if (settings.contact_notification_email) setValue('contact_notification_email', settings.contact_notification_email);
     } catch (error) {
       console.error('Failed to load settings:', error);
     } finally {
@@ -78,7 +91,26 @@ export default function AdminSettingsPage() {
     setSaving(true);
     setMessage(null);
     try {
-      await api.adminUpdateSettings(data);
+      const payload: Record<string, unknown> = { ...data };
+
+      if (data.contact_details?.trim()) {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(data.contact_details);
+        } catch {
+          setMessage({ type: 'error', text: 'Contact details must be valid JSON.' });
+          return;
+        }
+        payload.contact_details = parsed;
+      } else {
+        payload.contact_details = {};
+      }
+
+      if (!data.contact_notification_email) {
+        delete payload.contact_notification_email;
+      }
+
+      await api.adminUpdateSettings(payload);
       setMessage({ type: 'success', text: 'Settings saved successfully.' });
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -196,6 +228,18 @@ export default function AdminSettingsPage() {
               placeholder="1.0"
             />
             <p className="text-sm text-muted mt-1">Increment when consent text changes to track what subscribers agreed to.</p>
+          </div>
+
+          <div>
+            <label htmlFor="contact_notification_email" className="label">Contact Notification Email</label>
+            <input
+              id="contact_notification_email"
+              type="email"
+              {...register('contact_notification_email')}
+              className="input"
+              placeholder="admin@example.com"
+            />
+            <p className="text-sm text-muted mt-1">Email address to receive contact form submissions.</p>
           </div>
         </section>
 

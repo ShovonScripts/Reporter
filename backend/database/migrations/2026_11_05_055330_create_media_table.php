@@ -11,6 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Guard against databases where the media table was created under the
+        // previous migration filename (keeps upgrades from older checkouts safe).
+        if (Schema::hasTable('media')) {
+            return;
+        }
+
         Schema::create('media', function (Blueprint $table) {
             $table->id();
             $table->string('path'); // Relative path from storage root

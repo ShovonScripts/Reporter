@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,16 +11,25 @@ import { api } from '@/lib/api';
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
-  two_factor_code: z.string().length(6).optional().or(z.literal('')),
+  two_factor_code: z.string().max(20).optional().or(z.literal('')),
   remember: z.boolean().optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-paper flex items-center justify-center text-muted">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/admin';
+  const requestedCallback = searchParams.get('callbackUrl') || '/admin';
+  const callbackUrl = requestedCallback.startsWith('/admin') ? requestedCallback : '/admin';
   const [step, setStep] = useState<'login' | '2fa'>('login');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -165,8 +174,8 @@ export default function AdminLoginPage() {
                   <input
                     id="two_factor_code"
                     type="text"
-                    inputMode="numeric"
-                    maxLength={6}
+                    inputMode="text"
+                    maxLength={20}
                     autoComplete="one-time-code"
                     {...register('two_factor_code')}
                     className="input text-center text-2xl tracking-widest font-mono"
@@ -180,7 +189,7 @@ export default function AdminLoginPage() {
 
                 <button
                   type="submit"
-                  disabled={isLoading || !twoFactorCode || twoFactorCode.length !== 6}
+                  disabled={isLoading || !twoFactorCode || twoFactorCode.trim().length < 6}
                   className="btn btn-primary w-full py-3"
                 >
                   {isLoading ? 'Verifying...' : 'Verify'}

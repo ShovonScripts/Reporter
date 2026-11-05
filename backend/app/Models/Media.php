@@ -20,6 +20,10 @@ class Media extends Model
         'rights_note',
     ];
 
+    protected $appends = [
+        'url',
+    ];
+
     protected $casts = [
         'width' => 'integer',
         'height' => 'integer',
@@ -55,7 +59,7 @@ class Media extends Model
 
     public function getUrlAttribute(): string
     {
-        return '/media/' . $this->path;
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->path);
     }
 
     public function isImage(): bool

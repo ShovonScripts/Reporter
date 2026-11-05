@@ -83,7 +83,7 @@ class ProfileEntryController extends Controller
         $entry->delete();
 
         // Reorder remaining entries of same kind
-        $this->reorder($entry->kind);
+        $this->normalizePositions($entry->kind);
 
         return response()->json(['message' => 'Profile entry deleted.']);
     }
@@ -103,7 +103,7 @@ class ProfileEntryController extends Controller
         return response()->json(['message' => 'Entries reordered.']);
     }
 
-    private function reorder(string $kind): void
+    private function normalizePositions(string $kind): void
     {
         $entries = ProfileEntry::where('kind', $kind)->orderBy('position')->get();
         foreach ($entries as $index => $entry) {

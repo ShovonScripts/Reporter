@@ -174,7 +174,7 @@ class CaseFileController extends Controller
         $part->delete();
 
         // Reorder remaining parts
-        $this->reorderParts($caseFile->id);
+        $this->normalizePartPositions($caseFile->id);
 
         return response()->json(['message' => 'Part removed.']);
     }
@@ -313,7 +313,7 @@ class CaseFileController extends Controller
         return response()->json(['message' => 'Document removed.']);
     }
 
-    private function reorderParts(int $caseFileId): void
+    private function normalizePartPositions(int $caseFileId): void
     {
         $parts = CaseFilePart::where('case_file_id', $caseFileId)->orderBy('position')->get();
         foreach ($parts as $index => $part) {

@@ -67,28 +67,42 @@ class MediaController extends Controller
         // Process images - generate responsive variants
         if (str_starts_with($mime, 'image/') && $extension !== 'svg') {
             try {
-                $image = $this->imageManager->read(Storage::disk('public')->path($path));
+                $sourcePath = Storage::disk('public')->path($path);
+                $image = $this->imageManager->read($sourcePath);
 
                 $width = $image->width();
                 $height = $image->height();
 
                 // Generate WebP variant
-                $webpPath = Str::replaceLast('.' . $extension, '.webp', $path);
-                $webpImage = $image->toWebp(85);
-                Storage::disk('public')->put($webpPath, (string) $webpImage);
+                try {
+                    $webpPath = Str::replaceLast('.' . $extension, '.webp', $path);
+                    Storage::disk('public')->put($webpPath, (string) $image->toWebp(85));
+                } catch (\Throwable $e) {
+                    \Log::warning('WebP generation failed', ['path' => $path, 'error' => $e->getMessage()]);
+                }
 
-                // Generate AVIF variant
-                $avifPath = Str::replaceLast('.' . $extension, '.avif', $path);
-                $avifImage = $image->toAvif(75);
-                Storage::disk('public')->put($avifPath, (string) $avifImage);
+                // Generate AVIF variant (not supported by every GD build)
+                try {
+                    $avifPath = Str::replaceLast('.' . $extension, '.avif', $path);
+                    Storage::disk('public')->put($avifPath, (string) $image->toAvif(75));
+                } catch (\Throwable $e) {
+                    \Log::warning('AVIF generation failed', ['path' => $path, 'error' => $e->getMessage()]);
+                }
 
-                // Generate responsive sizes for images (max widths)
-                $sizes = [400, 800, 1200, 1600];
-                foreach ($sizes as $size) {
+                // Generate responsive WebP sizes from a fresh copy of the source
+                foreach ([400, 800, 1200, 1600] as $size) {
                     if ($width > $size) {
-                        $resizedPath = Str::replaceLast('.' . $extension, "-{$size}w.{$extension}", $path);
-                        $resized = $image->scaleDown($size);
-                        Storage::disk('public')->put($resizedPath, (string) $resized->toWebp(85));
+                        try {
+                            $resizedPath = Str::replaceLast('.' . $extension, "-{$size}w.webp", $path);
+                            $resized = $this->imageManager->read($sourcePath)->scaleDown($size);
+                            Storage::disk('public')->put($resizedPath, (string) $resized->toWebp(85));
+                        } catch (\Throwable $e) {
+                            \Log::warning('Responsive image generation failed', [
+                                'path' => $path,
+                                'size' => $size,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
                     }
                 }
 

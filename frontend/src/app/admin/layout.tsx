@@ -20,6 +20,13 @@ const navigation = [
   { name: 'Analytics', href: '/admin/analytics', icon: 'bar-chart' },
 ];
 
+interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  two_factor_enabled: boolean;
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -27,16 +34,30 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const isLoginPage = pathname === '/admin/login';
+  const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check auth on mount
+    if (isLoginPage) {
+      setLoading(false);
+      return;
+    }
+
+    // Check auth on mount / navigation
+    setLoading(true);
     api.getUser()
       .then((response) => setUser(response.data))
-      .catch(() => router.push('/admin/login'))
+      .catch(() => {
+        setUser(null);
+        router.push('/admin/login');
+      })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [isLoginPage, router]);
+
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (

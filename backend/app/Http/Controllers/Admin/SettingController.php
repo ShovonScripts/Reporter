@@ -22,11 +22,18 @@ class SettingController extends Controller
             'positioning_line' => 'nullable|string|max:255',
             'bio' => 'nullable|string',
             'social_links' => 'nullable|array',
-            'social_links.*' => 'string|url|max:500',
+            'social_links.*' => 'nullable|string|url|max:500',
             'contact_details' => 'nullable|array',
             'newsletter_copy' => 'nullable|string',
             'newsletter_consent_version' => 'nullable|string|max:20',
         ]);
+
+        if (isset($validated['social_links'])) {
+            $validated['social_links'] = array_values(array_filter(
+                $validated['social_links'],
+                fn ($value) => filled($value)
+            ));
+        }
 
         foreach ($validated as $key => $value) {
             SiteSetting::set($key, $value);

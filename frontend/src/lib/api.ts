@@ -23,7 +23,7 @@ class ApiClient {
         if (typeof window !== 'undefined') {
           const csrfToken = this.getCsrfToken();
           if (csrfToken) {
-            config.headers['X-CSRF-TOKEN'] = csrfToken;
+            config.headers['X-XSRF-TOKEN'] = csrfToken;
           }
         }
         return config;
@@ -52,13 +52,16 @@ class ApiClient {
     return match ? decodeURIComponent(match[1]) : null;
   }
 
-  // Get CSRF cookie
+  // Get CSRF cookie (Sanctum route lives at the app root, not under /api/v1)
   async getCsrfCookie(): Promise<void> {
-    await this.client.get('/sanctum/csrf-cookie');
+    const rootUrl = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+    await axios.get(`${rootUrl}/sanctum/csrf-cookie`, { withCredentials: true });
   }
 
   // Auth
   async login(email: string, password: string, twoFactorCode?: string, remember = false) {
+    // Sanctum's stateful API requires a CSRF cookie before the first state-changing request.
+    await this.getCsrfCookie();
     return this.client.post('/admin/auth/login', { email, password, two_factor_code: twoFactorCode, remember });
   }
 
@@ -131,7 +134,7 @@ class ApiClient {
     return this.client.get(`/newsletter/unsubscribe/${token}`);
   }
 
-  async sendContact(data: { name: string; email: string; message: string }) {
+  async sendContact(data: { name: string; email: string; message: string; honeypot?: string }) {
     return this.client.post('/contact', data);
   }
 

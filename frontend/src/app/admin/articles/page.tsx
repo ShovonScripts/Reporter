@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';
@@ -29,11 +29,7 @@ export default function AdminArticlesPage() {
     page: 1,
   });
 
-  useEffect(() => {
-    loadArticles();
-  }, [filters]);
-
-  const loadArticles = async () => {
+  const loadArticles = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -55,7 +51,11 @@ export default function AdminArticlesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    loadArticles();
+  }, [loadArticles]);
 
   const statusColors: Record<string, string> = {
     published: 'bg-green-100 text-green-800',

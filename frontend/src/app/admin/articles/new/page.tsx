@@ -8,6 +8,28 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 
+// HTML form inputs always hand back strings; coerce them to the types the API expects.
+const optionalId = z.preprocess(
+  (v) => (v === '' || v === null || v === undefined ? null : Number(v)),
+  z.number().int().positive().nullable()
+);
+
+const optionalPositiveInt = z.preprocess(
+  (v) => (v === '' || v === null || v === undefined ? null : Number(v)),
+  z.number().int().min(0).nullable()
+);
+
+const idList = z.preprocess(
+  (v) => {
+    if (v === '' || v === null || v === undefined) return [];
+    const values = Array.isArray(v) ? v : [v];
+    return values
+      .map((item) => Number(item))
+      .filter((n) => Number.isInteger(n) && n > 0);
+  },
+  z.array(z.number().int().positive())
+);
+
 const articleSchema = z.object({
   type: z.enum(['external', 'internal']).default('external'),
   title: z.string().min(1, 'Title is required').max(255),
@@ -18,21 +40,21 @@ const articleSchema = z.object({
   status: z.enum(['draft', 'scheduled', 'published', 'archived']).default('draft'),
   published_at: z.string().optional(),
   scheduled_for: z.string().optional(),
-  publication_id: z.number().optional().nullable(),
+  publication_id: optionalId,
   original_url: z.string().url().optional().or(z.literal('')),
   archived_url: z.string().url().optional().or(z.literal('')),
-  featured_media_id: z.number().optional().nullable(),
+  featured_media_id: optionalId,
   show_image: z.boolean().default(true),
   is_featured: z.boolean().default(false),
-  featured_order: z.number().optional().nullable(),
-  reading_minutes: z.number().optional().nullable(),
+  featured_order: optionalPositiveInt,
+  reading_minutes: optionalPositiveInt,
   seo_title: z.string().max(255).optional(),
   seo_description: z.string().max(500).optional(),
-  og_media_id: z.number().optional().nullable(),
+  og_media_id: optionalId,
   canonical_url: z.string().url().optional().or(z.literal('')),
-  category_ids: z.array(z.number()).default([]),
-  tag_ids: z.array(z.number()).default([]),
-  primary_category_id: z.number().optional().nullable(),
+  category_ids: idList.default([]),
+  tag_ids: idList.default([]),
+  primary_category_id: optionalId,
 });
 
 type ArticleForm = z.infer<typeof articleSchema>;
@@ -45,22 +67,26 @@ export default function NewArticlePage() {
   const [media, setMedia] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showContentEditor, setShowContentEditor] = useState(false);
 
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<ArticleForm>({
     resolver: zodResolver(articleSchema) as any,
-    defaultValues: {},
+    defaultValues: {
+      type: 'external',
+      status: 'draft',
+      show_image: true,
+      is_featured: false,
+      category_ids: [],
+      tag_ids: [],
+    },
   });
 
   const type = watch('type');
   const status = watch('status');
-  const bodyHtml = watch('body_html');
 
   useEffect(() => {
     loadReferenceData();
@@ -102,6 +128,8 @@ export default function NewArticlePage() {
         primary_category_id: data.primary_category_id || null,
         scheduled_for: data.scheduled_for || null,
         published_at: data.published_at || null,
+        featured_order: data.featured_order ?? null,
+        reading_minutes: data.reading_minutes || null,
       };
 
       const response = await api.adminCreateArticle(payload);
@@ -136,7 +164,7 @@ export default function NewArticlePage() {
         <div className="card p-6 grid gap-4 md:grid-cols-2">
           <div>
             <label className="label">Type</label>
-            <select {...register('type')} className="input" onChange={(e) => setShowContentEditor(e.target.value === 'internal')}>
+            <select {...register('type')} className="input">
               <option value="external">External Publication</option>
               <option value="internal">Original Article</option>
             </select>
@@ -219,7 +247,7 @@ export default function NewArticlePage() {
         )}
 
         {/* Internal Article Content */}
-        {type === 'internal' && showContentEditor && (
+        {type === 'internal' && (
           <div className="card p-6 space-y-4">
             <h3 className="font-bold">Article Content</h3>
             <div className="border border-hairline rounded-none p-4 bg-white min-h-[400px]">

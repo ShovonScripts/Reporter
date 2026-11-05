@@ -7,6 +7,7 @@ use App\Models\Article;
 use App\Models\CaseFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SearchController extends Controller
 {
@@ -22,18 +23,32 @@ class SearchController extends Controller
         }
 
         $searchTerm = $query->value();
+        $like = '%' . $searchTerm . '%';
+        $driver = DB::connection()->getDriverName();
+        $supportsFullText = in_array($driver, ['mysql', 'mariadb'], true);
 
-        // Search articles using MySQL FULLTEXT
-        $articles = Article::published()
-            ->whereRaw("MATCH(title, summary) AGAINST(? IN NATURAL LANGUAGE MODE)", [$searchTerm])
+        // Search articles (FULLTEXT on MySQL, LIKE fallback elsewhere e.g. SQLite)
+        $articlesQuery = Article::published()
             ->with([
                 'publication:id,name,slug',
                 'featuredMedia:id,path,mime,alt_text,credit,caption,rights_confirmed',
                 'categories:id,name,slug',
-            ])
-            ->orderByRaw("MATCH(title, summary) AGAINST(? IN NATURAL LANGUAGE MODE) DESC", [$searchTerm])
-            ->limit(20)
-            ->get()
+            ]);
+
+        if ($supportsFullText) {
+            $articlesQuery
+                ->whereRaw("MATCH(title, summary) AGAINST(? IN NATURAL LANGUAGE MODE)", [$searchTerm])
+                ->orderByRaw("MATCH(title, summary) AGAINST(? IN NATURAL LANGUAGE MODE) DESC", [$searchTerm]);
+        } else {
+            $articlesQuery
+                ->where(function ($q) use ($like) {
+                    $q->where('title', 'like', $like)
+                      ->orWhere('summary', 'like', $like);
+                })
+                ->orderByDesc('published_at');
+        }
+
+        $articles = $articlesQuery->limit(20)->get()
             ->map(function ($article) {
                 return [
                     'id' => $article->id,
@@ -59,15 +74,27 @@ class SearchController extends Controller
                 ];
             });
 
-        // Search case files
-        $caseFiles = CaseFile::published()
-            ->whereRaw("MATCH(title, deck, overview_html) AGAINST(? IN NATURAL LANGUAGE MODE)", [$searchTerm])
+        // Search case files (FULLTEXT on MySQL, LIKE fallback elsewhere)
+        $caseFilesQuery = CaseFile::published()
             ->with([
                 'featuredMedia:id,path,mime,alt_text,credit,caption,rights_confirmed',
-            ])
-            ->orderByRaw("MATCH(title, deck, overview_html) AGAINST(? IN NATURAL LANGUAGE MODE) DESC", [$searchTerm])
-            ->limit(10)
-            ->get()
+            ]);
+
+        if ($supportsFullText) {
+            $caseFilesQuery
+                ->whereRaw("MATCH(title, deck, overview_html) AGAINST(? IN NATURAL LANGUAGE MODE)", [$searchTerm])
+                ->orderByRaw("MATCH(title, deck, overview_html) AGAINST(? IN NATURAL LANGUAGE MODE) DESC", [$searchTerm]);
+        } else {
+            $caseFilesQuery
+                ->where(function ($q) use ($like) {
+                    $q->where('title', 'like', $like)
+                      ->orWhere('deck', 'like', $like)
+                      ->orWhere('overview_html', 'like', $like);
+                })
+                ->orderByDesc('period_start');
+        }
+
+        $caseFiles = $caseFilesQuery->limit(10)->get()
             ->map(function ($caseFile) {
                 return [
                     'id' => $caseFile->id,

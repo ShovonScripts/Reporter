@@ -1,0 +1,302 @@
+@import "tailwindcss";
+
+/* ProDo Reporter Design System */
+@theme {
+  /* Colors from Design Direction */
+  --color-paper: #F6F2EA;
+  --color-manila: #EBE3D1;
+  --color-ink: #16130F;
+  --color-muted: #5C554B;
+  --color-hairline: #D9D2C5;
+  --color-accent: #26356B;
+
+  /* Semantic color mappings */
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-muted-foreground: var(--color-muted);
+  --color-border: var(--color-hairline);
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: #ffffff;
+
+  /* Typography from Design Direction */
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-sans: "Public Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  /* Spacing scale */
+  --spacing-article: 680px; /* Article text column width */
+  --spacing-reading-progress: 3px;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-serif);
+    font-size: 1.3125rem; /* ~21px */
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  @media (max-width: 768px) {
+    body {
+      font-size: 1.1875rem; /* ~19px */
+    }
+  }
+
+  /* Headings use sans-serif */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-ink);
+  }
+
+  /* Links */
+  a {
+    color: var(--color-accent);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  a:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+
+  /* Focus states */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: var(--color-accent);
+    color: white;
+  }
+
+  /* Horizontal rules */
+  hr {
+    border: 0;
+    border-top: 1px solid var(--color-hairline);
+    margin: 2rem 0;
+  }
+
+  /* Code/mono */
+  code, kbd, samp, pre {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Article text column */
+  .article-column {
+    max-width: var(--spacing-article);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Reading progress bar */
+  .reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: var(--spacing-reading-progress);
+    background: var(--color-accent);
+    z-index: 100;
+    transform-origin: left;
+  }
+
+  /* Masthead double rule */
+  .masthead {
+    border-bottom: 3px double var(--color-ink);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  /* Hairline divider */
+  .hairline {
+    border-top: 1px solid var(--color-hairline);
+  }
+
+  /* Double rule */
+  .double-rule {
+    border-top: 3px double var(--color-ink);
+  }
+
+  /* Button styles */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 0.875rem;
+    border-radius: 0;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    background-color: var(--color-ink);
+    color: white;
+    border-color: var(--color-ink);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-muted);
+    border-color: var(--color-muted);
+  }
+
+  .btn-secondary {
+    background-color: transparent;
+    color: var(--color-ink);
+    border-color: var(--color-hairline);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--color-manila);
+    border-color: var(--color-ink);
+  }
+
+  .btn-accent {
+    background-color: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+  }
+
+  .btn-accent:hover {
+    background-color: #1e2a55;
+    border-color: #1e2a55;
+  }
+
+  /* Input styles */
+  .input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    color: var(--color-ink);
+    background-color: white;
+    border: 1px solid var(--color-hairline);
+    border-radius: 0;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .input:focus {
+    outline: none;
+    border-color: var(--color-ink);
+    box-shadow: 0 0 0 3px var(--color-accent);
+  }
+
+  .input::placeholder {
+    color: var(--color-muted);
+  }
+
+  /* Label */
+  .label {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-ink);
+    margin-bottom: 0.5rem;
+  }
+
+  /* Card */
+  .card {
+    border: 1px solid var(--color-hairline);
+    padding: 1.5rem;
+    background-color: white;
+    transition: border-color 0.15s ease;
+  }
+
+  .card:hover {
+    border-color: var(--color-muted);
+  }
+
+  .card-manila {
+    background-color: var(--color-manila);
+  }
+
+  /* Badge */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid var(--color-hairline);
+    border-radius: 0;
+  }
+
+  .badge-external {
+    background-color: transparent;
+    color: var(--color-muted);
+  }
+
+  .badge-internal {
+    background-color: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+  }
+
+  .badge-casefile-complete {
+    background-color: transparent;
+    color: var(--color-muted);
+  }
+
+  .badge-casefile-ongoing {
+    background-color: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .measure-65 {
+    max-width: 65ch;
+  }
+
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}
